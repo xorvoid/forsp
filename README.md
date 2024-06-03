@@ -39,7 +39,7 @@ See blog post for details: [FORSP: A Forth+Lisp Hybrid Lambda Calculus Language]
   ) $Y
 
   ; rec syntax sugar for Y-Combinator
-  ($fn (^fn Y)) $rec
+  ($g (^g Y)) $rec
 
   ; factorial
   ($self $n

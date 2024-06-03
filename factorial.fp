@@ -11,8 +11,8 @@
     force
   ) $Y
 
-  ; rec syntax sugar for Y-Combinator
-  ($fn (^fn Y)) $rec
+  ; rec: syntax sugar for applying the Y-Combinator
+  ($g (^g Y)) $rec
 
   ; factorial
   ($self $n
