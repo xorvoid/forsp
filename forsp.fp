@@ -1,39 +1,18 @@
 (
-  (tag 0 eq) $is-nil
-  (tag 1 eq) $is-atom
-  (tag 2 eq) $is-num
-  (tag 3 eq) $is-pair
-  (tag 4 eq) $is-clos
-  (tag 5 eq) $is-prim
+  (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
 
   ($n ^n ^n)                     $dup
-  ('t cswap)                     $swap
   (force cswap $_ force)         $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif
   ($a $b '() ('() 't b if) a if) $and
   ($a $b ('() 't b if) 't a if)  $or
 
-  ; debug
-  ('debug print stack print) $debug
-
-  ; fail
-  (FAIL) $fail
-
-  ; Y-Combinator
-  ($f
-    ($x (^x x) f)
-    ($x (^x x) f)
-    force
-  ) $Y
-
-  ; rec: syntax sugar for applying the Y-Combinator
-  ($g (^g Y)) $rec
+  ; rec: Recursion via Y-Combinator
+  ($f ($x (^x x) f) dup force) $Y ($g (^g Y)) $rec
 
   ; explode
   ($self $list
-    ^if ('() ^list eq) ()
-      (^list cdr self ^list car)
-    endif
+    ^if ('() ^list eq) () (^list cdr self ^list car) endif
   ) rec $explode
 
   ; env-find
@@ -51,18 +30,12 @@
   ; stack operations
   (cons)                    $push
   ($b push ^b push)         $push2
-  (dup cdr swap car)        $pop
+  (dup cdr 't cswap car)    $pop
   (pop $b pop ^b)           $pop2
   (pop $c pop $b pop ^b ^c) $pop3
 
-  ; make-closure
-  ($expr $env
-    '() ^env cons ^expr cons '#closure cons)
-  $make-closure
-
-  ; is-closure
-  ($expr (^expr car '#closure eq) (^expr is-pair) and)
-  $is-closure
+  ($expr $env '() ^env cons ^expr cons '#closure cons)  $make-closure
+  ($expr (^expr car '#closure eq) (^expr is-pair) and)  $is-closure
 
   ; compute
   ($self $eval $stack $comp $env (^eval self) $self ; curry eval into self
@@ -121,12 +94,12 @@
  $env
 
  read $expr
- ^env ^expr '()
- eval pop swap ^eval apply
+ ^env ^expr '() eval
+ pop 't cswap ^eval apply
 )
 
 (
-  ($fn fn)                     $force
+  ($x x)                       $force
   (force cswap $_ force)       $if
   ($f $t $c $fn ^f ^t ^c fn)   $endif
   ()                           $[
