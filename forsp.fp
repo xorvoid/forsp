@@ -7,7 +7,6 @@
   (tag 5 eq) $is-prim
 
   ($n ^n ^n)                     $dup
-  ($_)                           $drop
   ('t cswap)                     $swap
   (force cswap $_ force)         $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif
@@ -49,11 +48,12 @@
   ; env-define: $key $val $env
   (cons cons) $env-define
 
-  ; push: $value $stack -> $stack
-  (cons) $push
-
-  ; pop: $stack -> $value $stack
-  (dup cdr swap car) $pop
+  ; stack operations
+  (cons)                    $push
+  ($b push ^b push)         $push2
+  (dup cdr swap car)        $pop
+  (pop $b pop ^b)           $pop2
+  (pop $c pop $b pop ^b ^c) $pop3
 
   ; make-closure
   ($expr $env
@@ -65,8 +65,7 @@
   $is-closure
 
   ; compute
-  ($self $eval $stack $comp $env
-    (^eval self) $self ; curry eval into self
+  ($self $eval $stack $comp $env (^eval self) $self ; curry eval into self
     ^if (^comp is-nil) ^stack (
       ^comp pop $cmd $comp
       ^if (^cmd '' eq) (
@@ -90,10 +89,9 @@
   ) rec $compute
 
   ; apply: $eval $stack $expr
-  ($eval $stack $expr
-    (^eval compute) $compute ; curry eval into compute
+  ($eval $stack $expr (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-closure) (
-      ^expr explode drop ^stack compute
+      ^expr explode $_ ^stack compute
     ) (^if (^expr is-clos) (
       ^stack expr
     ) (
@@ -102,51 +100,29 @@
   ) $apply
 
   ; eval: $eval $stack $expr $env
-  ($eval $stack $expr $env
-    (^eval apply) $apply ; curry eval into apply
+  ($eval $stack $expr $env (^eval apply) $apply ; curry eval into apply
     ^if (^expr is-atom) (
-      ^env ^expr env-find     ^stack apply
+      ^env ^expr env-find ^stack apply
     ) (^if ((^expr is-nil) (^expr is-pair) or) (
       ^stack ^env ^expr make-closure push
     ) (
       ^stack ^expr push
     ) endif) endif
   ) rec $eval
-  (^eval apply) $apply ; curry eval into apply
 
  ; init-env
- (
-   '()
-
-   (pop print)             'print  cons cons
-   (dup push)              'stack  cons cons
-   (pop $b pop ^b eq push) 'eq     cons cons
-
-   (pop $cond
-    pop $a
-    pop $b
-    $st
-    ^b ^a ^cond
-    cswap swap
-    ^st
-    swap push
-    swap push
-   ) 'cswap cons cons
-
-   (pop $b
-    pop $a
-    ^a ^b - push
-   ) '- cons cons
-
-   (pop $b
-    pop $a
-    ^a ^b * push
-   ) '* cons cons
- ) force $env
+ '()
+ (pop print)        'print  cons cons
+ (dup push)         'stack  cons cons
+ (pop2 eq push)     'eq     cons cons
+ (pop3 cswap push2) 'cswap  cons cons
+ (pop2 - push)      '-      cons cons
+ (pop2 * push)      '*      cons cons
+ $env
 
  read $expr
  ^env ^expr '()
- eval pop swap apply
+ eval pop swap ^eval apply
 )
 
 (
