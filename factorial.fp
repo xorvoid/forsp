@@ -4,6 +4,8 @@
   ()                           $[
   ()                           $]
 
+  ('debug print stack print DEBUG_HALT) $debug
+
   ; Y-Combinator
   ($f
     ($x (^x x) f)
@@ -16,7 +18,7 @@
 
   ; factorial
   ($self $n
-    ^if [ ^n 0 eq ] 1
+    ^if [ ^n 0 eq 1 ]
       ([ ^n 1 - ] self ^n *)
     endif
   ) rec $factorial

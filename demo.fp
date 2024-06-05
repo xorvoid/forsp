@@ -1,7 +1,7 @@
 (
- ($1 $2 ^1 ^2 force)             $force2
- ($1 $2 $3 ^1 ^2 ^3 force)       $force3
- ($1 $2 $3 $4 ^1 ^2 ^3 ^4 force) $force4
+ ($a $b ^a ^b force)             $force2
+ ($a $b $c ^a ^b ^c force)       $force3
+ ($a $b $c $d ^a ^b ^c ^d force) $force4
 
  ($x ^x ^x)                $dup
  ($x)                      $drop

@@ -8,10 +8,16 @@
 #define FAIL(...) do { fprintf(stderr, "FAIL: "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); abort(); } while (0)
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
 
-static bool parse_i64(const char *str, int64_t *_out)
+
+static bool parse_i64(const char *str, size_t len, int64_t *_out)
 {
-  int64_t n = atoll(str);
-  if (n == 0 && 0 != strcmp(str, "0")) {
+  // Copy to ensure null-termination
+  static char buf[20];
+  memcpy(buf, str, len);
+  buf[len] = '\0';
+
+  int64_t n = atoll(buf);
+  if (n == 0 && 0 != strcmp(buf, "0")) {
     return false;
   }
   *_out = n;
@@ -28,12 +34,14 @@ static bool parse_i64(const char *str, int64_t *_out)
  * Object
  ******************************************************************/
 
-#define TAG_ATOM 0
-#define TAG_NUM  1
-#define TAG_PAIR 2
-#define TAG_CLOS 3
-#define TAG_PRIM 4
+#define TAG_NIL  0
+#define TAG_ATOM 1
+#define TAG_NUM  2
+#define TAG_PAIR 3
+#define TAG_CLOS 4
+#define TAG_PRIM 5
 
+#define IS_NIL(obj)  ((obj)->tag == TAG_NIL)
 #define IS_ATOM(obj) ((obj)->tag == TAG_ATOM)
 #define IS_NUM(obj)  ((obj)->tag == TAG_NUM)
 #define IS_PAIR(obj) ((obj)->tag == TAG_PAIR)
@@ -70,6 +78,8 @@ struct state
   size_t  input_len;             // input data length used by read()
   size_t  input_pos;             // input data position used by read()
 
+  obj_t * nil;                   // nil: ()
+
   obj_t * interned_atoms;        // interned atoms list
   obj_t * atom_true;             // atom: t
   obj_t * atom_quote;            // atom: '
@@ -84,6 +94,13 @@ state_t state[1];
 obj_t *alloc(void)
 {
   return (obj_t*)malloc(sizeof(obj_t));
+}
+
+obj_t *make_nil(void)
+{
+  obj_t *obj = alloc();
+  obj->tag = TAG_NIL;
+  return obj;
 }
 
 obj_t *make_atom(const char *str, size_t len)
@@ -136,7 +153,7 @@ obj_t *make_prim(void (*func)(void))
 obj_t *intern(const char *atom_buf, size_t atom_len)
 {
   // Search for an existing matching atom
-  for (obj_t *list = state->interned_atoms; list; list = list->pair.cdr) {
+  for (obj_t *list = state->interned_atoms; list != state->nil; list = list->pair.cdr) {
     assert(IS_PAIR(list));
     obj_t * elem = list->pair.car;
     assert(IS_ATOM(elem));
@@ -167,9 +184,7 @@ obj_t *cdr(obj_t *obj)
 
 bool obj_equal(obj_t *a, obj_t *b)
 {
-  if (a == b) return true;
-  if (!a || !b) return false;
-  return (IS_NUM(a) && IS_NUM(b) && a->num == b->num);
+  return (a == b) || (IS_NUM(a) && IS_NUM(b) && a->num == b->num);
 }
 
 int64_t obj_i64(obj_t *a)
@@ -239,7 +254,7 @@ obj_t *read_list(void)
   char c = peek();
   if (c == ')') {
     advance();
-    return NULL;
+    return state->nil;
   }
   return make_pair(read(), read_list());
 }
@@ -263,13 +278,20 @@ obj_t *read(void)
     return read_list();
   }
 
-  // Otherwise, assume atom and read it
+  // Otherwise, assume atom or num and read it
   size_t start = state->input_pos;
   while (!is_punctuation(peek())) advance();
 
   char * str = &state->input_str[start];
   size_t n = state->input_pos - start;
-  return intern(str, n);
+
+  // Is it a number?
+  int64_t num;
+  if (parse_i64(str, n, &num)) { // num
+    return make_num(num);
+  } else { // atom
+    return intern(str, n);
+  }
 }
 
 /*******************************************************************
@@ -280,7 +302,7 @@ void print_recurse(obj_t *obj);
 
 void print_list_tail(obj_t *obj)
 {
-  if (obj == NULL) {
+  if (obj == state->nil) {
     printf(")");
     return;
   }
@@ -297,7 +319,7 @@ void print_list_tail(obj_t *obj)
 
 void print_recurse(obj_t *obj)
 {
-  if (obj == NULL) {
+  if (obj == state->nil) {
     printf("()");
     return;
   }
@@ -336,7 +358,7 @@ obj_t *env_find(obj_t *env, obj_t *key)
 {
   if (!IS_ATOM(key)) FAIL("Expected 'key' to be an atom in env_find()");
 
-  for (; env; env = cdr(env)) {
+  for (; env != state->nil; env = cdr(env)) {
     obj_t *kv = car(env);
     if (key == car(kv)) {
       return cdr(kv);
@@ -396,22 +418,22 @@ void compute(obj_t *comp, obj_t *env)
     print(comp);
   }
 
-  if (!comp) return; // all-done
+  if (comp == state->nil) return; // all-done
 
   // unpack
   obj_t *cmd  = car(comp);
   obj_t *rest = cdr(comp);
 
   if (cmd == state->atom_quote) {
-    if (!rest) FAIL("Expected data followng a quote directive (')");
+    if (rest == state->nil) FAIL("Expected data followng a quote directive (')");
     push(car(rest));
     rest = cdr(rest);
   } else if (cmd == state->atom_push) {
-    if (!rest || !IS_ATOM(car(rest))) FAIL("Expected an atom followng a push directive (^)");
+    if (rest == state->nil || !IS_ATOM(car(rest))) FAIL("Expected an atom followng a push directive (^)");
     push(env_find(env, car(rest)));
     rest = cdr(rest);
   } else if (cmd == state->atom_pop) {
-    if (!rest || !IS_ATOM(car(rest))) FAIL("Expected an atom followng a pop directive ($)");
+    if (rest == state->nil || !IS_ATOM(car(rest))) FAIL("Expected an atom followng a pop directive ($)");
     env = env_define(env, car(rest), pop());
     rest = cdr(rest);
   } else {
@@ -429,12 +451,10 @@ void apply(obj_t *expr)
     print(expr);
   }
 
-  if (expr) {
-    if (IS_CLOS(expr)) { // closure
-      return compute(expr->clos.body, expr->clos.env);
-    } else if (IS_PRIM(expr)) { // primitive
-      return expr->prim.func();
-    }
+  if (IS_CLOS(expr)) { // closure
+    return compute(expr->clos.body, expr->clos.env);
+  } else if (IS_PRIM(expr)) { // primitive
+    return expr->prim.func();
   }
 
   // everything else applies and reproduces itself
@@ -448,15 +468,12 @@ void eval(obj_t *expr, obj_t *env)
     print(expr);
   }
 
-  if (expr && IS_ATOM(expr)) {
-    int64_t num;
-    if (parse_i64(expr->atom, &num)) { // numbers
-      push(make_num(num));
-    } else { // normal names
-      apply(env_find(env, expr));
-    }
-  } else {
+  if (IS_ATOM(expr)) {
+    apply(env_find(env, expr));
+  } else if (IS_NIL(expr) || IS_PAIR(expr)) {
     push(make_clos(expr, env));
+  } else {
+    push(expr);
   }
 }
 
@@ -465,13 +482,15 @@ void eval(obj_t *expr, obj_t *env)
  ******************************************************************/
 
 void prim_force(void) { apply(pop()); }
-void prim_eq(void)    { push(obj_equal(pop(), pop()) ? state->atom_true : NULL); }
+void prim_eq(void)    { push(obj_equal(pop(), pop()) ? state->atom_true : state->nil); }
 void prim_cons(void)  { obj_t *a, *b; a = pop(); b = pop(); push(make_pair(a, b)); }
 void prim_car(void)   { push(car(pop())); }
 void prim_cdr(void)   { push(cdr(pop())); }
 void prim_cswap(void) { if (pop() == state->atom_true) { obj_t *a, *b; a = pop(); b = pop(); push(a); push(b); } }
+void prim_read(void)  { push(read()); }
 void prim_print(void) { print(pop()); }
 void prim_stack(void) { push(state->stack); }
+void prim_tag(void)   { push(make_num(pop()->tag)); }
 void prim_sub(void)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
 void prim_mul(void)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
 
@@ -506,23 +525,27 @@ void setup(const char *input_path)
   state->input_len = strlen(state->input_str);
   state->input_pos = 0;
 
-  state->interned_atoms = NULL;
+  state->nil   = make_nil();
+
+  state->interned_atoms = state->nil;
   state->atom_true      = intern("t", 1);
   state->atom_quote     = intern("'", 1);
   state->atom_push      = intern("^", 1);
   state->atom_pop       = intern("$", 1);
 
-  state->stack = NULL;
+  state->stack = state->nil;
 
-  obj_t *env = NULL;
+  obj_t *env = state->nil;
   env = env_define_prim(env, "force", &prim_force);
   env = env_define_prim(env, "cons",  &prim_cons);
   env = env_define_prim(env, "car",   &prim_car);
   env = env_define_prim(env, "cdr",   &prim_cdr);
   env = env_define_prim(env, "eq",    &prim_eq);
   env = env_define_prim(env, "cswap", &prim_cswap);
+  env = env_define_prim(env, "read",  &prim_read);
   env = env_define_prim(env, "print", &prim_print);
   env = env_define_prim(env, "stack", &prim_stack);
+  env = env_define_prim(env, "tag",   &prim_tag);
   env = env_define_prim(env, "-",     &prim_sub);
   env = env_define_prim(env, "*",     &prim_mul);
   state->env = env;
