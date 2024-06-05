@@ -1,6 +1,7 @@
 (
   (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
 
+  ($x x)                         $force
   ($n ^n ^n)                     $dup
   (force cswap $_ force)         $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif

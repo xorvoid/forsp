@@ -1,4 +1,5 @@
 (
+ ($x x)                          $force
  ($a $b ^a ^b force)             $force2
  ($a $b $c ^a ^b ^c force)       $force3
  ($a $b $c $d ^a ^b ^c ^d force) $force4

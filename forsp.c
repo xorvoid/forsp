@@ -481,7 +481,6 @@ void eval(obj_t *expr, obj_t *env)
  * Primitives
  ******************************************************************/
 
-void prim_force(void) { apply(pop()); }
 void prim_eq(void)    { push(obj_equal(pop(), pop()) ? state->atom_true : state->nil); }
 void prim_cons(void)  { obj_t *a, *b; a = pop(); b = pop(); push(make_pair(a, b)); }
 void prim_car(void)   { push(car(pop())); }
@@ -536,7 +535,6 @@ void setup(const char *input_path)
   state->stack = state->nil;
 
   obj_t *env = state->nil;
-  env = env_define_prim(env, "force", &prim_force);
   env = env_define_prim(env, "cons",  &prim_cons);
   env = env_define_prim(env, "car",   &prim_car);
   env = env_define_prim(env, "cdr",   &prim_cdr);
@@ -561,7 +559,7 @@ int main(int argc, char *argv[])
 
   obj_t *obj = read();
   eval(obj, state->env);
-  prim_force();
+  apply(pop());
 
   return 1;
 }
