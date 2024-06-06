@@ -22,11 +22,11 @@
   ) rec $env-find
 
   ; stack operations
-  (cons)                    $push
-  ($b push ^b push)         $push2
-  (dup cdr swap car)        $pop
-  (pop $b pop ^b)           $pop2
-  (pop $c pop $b pop ^b ^c) $pop3
+  (cons)                                      $stack-push
+  ($b stack-push ^b stack-push)               $stack-push2
+  (dup cdr swap car)                          $stack-pop
+  (stack-pop $b stack-pop ^b)                 $stack-pop2
+  (stack-pop $c stack-pop $b stack-pop ^b ^c) $stack-pop3
 
   ($expr $env '() ^env cons ^expr cons '#closure cons)  $make-closure
   ($expr (^expr car '#closure eq) (^expr is-pair) and)  $is-closure
@@ -34,46 +34,48 @@
   ; compute
   ($self $eval $stack $comp $env (^eval self) $self ; curry eval into self
     ^if (^comp is-nil) ^stack (
-      ^comp pop $cmd $comp
-      ^if (^cmd '' eq) (
-        ^comp pop $literal $comp
-        ^stack ^literal push $stack
-        ^env ^comp ^stack self
-      ) (^if  (^cmd '^ eq) (
-        ^comp pop $name $comp
-        ^env ^name env-find $value
-        ^stack ^value push $stack
-        ^env ^comp ^stack self
-      ) (^if  (^cmd '$ eq) (
-        ^comp pop $name $comp
-        ^stack pop $val $stack
-        ^env ^val ^name cons cons $env
+      ^comp stack-pop $cmd $comp
+      ^if (^cmd 'quote eq) (
+        ^comp stack-pop $literal $comp
+        ^stack ^literal stack-push $stack
         ^env ^comp ^stack self
       ) (
-        ^env ^cmd ^stack eval $stack
+        ^env ^cmd ^stack eval $stack $env
         ^env ^comp ^stack self
-      ) endif) endif) endif) endif
+      ) endif) endif
   ) rec $compute
 
-  ; eval: $eval $stack $expr $env
+  ; eval: $eval $stack $expr $env -> $stack $env
   ($eval $stack $expr $env (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-atom) (
       ^env ^expr env-find $callable
-      ^if (^callable is-closure) (^callable cdr dup cdr car swap car ^stack compute)
-      (^if (^callable is-clos)   (^stack callable)
-                                 (^stack ^callable push) endif) endif)
+      ^if (^callable is-closure) (^env ^callable cdr dup cdr car swap car ^stack compute)
+      (^if (^callable is-clos)   (^env ^stack callable)
+                                 (^env ^stack ^callable stack-push) endif) endif)
     (^if ((^expr is-nil) (^expr is-pair) or)
-      (^stack ^env ^expr make-closure push)
-      (^stack ^expr push) endif) endif
+      (^env ^stack ^env ^expr make-closure stack-push)
+      (^env ^stack ^expr stack-push) endif) endif
   ) rec $eval
 
  ; init-env
  '()
- (pop print)        'print  cons cons
- (pop2 eq push)     'eq     cons cons
- (pop3 cswap push2) 'cswap  cons cons
- (pop2 - push)      '-      cons cons
- (pop2 * push)      '*      cons cons
+
+ ($stack $env
+   ^stack stack-pop $name $stack
+   ^env ^name env-find $value
+   ^env ^stack ^value stack-push) 'push cons cons
+
+ ($stack $env
+   ^stack stack-pop $name $stack
+   ^stack stack-pop $value $stack
+   ^env ^value ^name cons cons ^stack) 'pop cons cons
+
+ (dup cons)                     'stack  cons cons
+ (stack-pop print)              'print  cons cons
+ (stack-pop2 eq stack-push)     'eq     cons cons
+ (stack-pop3 cswap stack-push2) 'cswap  cons cons
+ (stack-pop2 - stack-push)      '-      cons cons
+ (stack-pop2 * stack-push)      '*      cons cons
 
  read '() ^eval compute
 )

@@ -65,10 +65,13 @@ struct obj
       obj_t *env;
     } clos;
     struct {
-      void (*func)(void);
+      void (*func)(obj_t **env);
     } prim;
   };
 };
+
+#define FLAG_PUSH 128
+#define FLAG_POP  129
 
 // Global State
 typedef struct state state_t;
@@ -79,12 +82,13 @@ struct state
   size_t  input_pos;             // input data position used by read()
 
   obj_t * nil;                   // nil: ()
+  obj_t * read_stack;            // defered obj to emit from read
 
   obj_t * interned_atoms;        // interned atoms list
   obj_t * atom_true;             // atom: t
-  obj_t * atom_quote;            // atom: '
-  obj_t * atom_push;             // atom: ^
-  obj_t * atom_pop;              // atom: $
+  obj_t * atom_quote;            // atom: quote
+  obj_t * atom_push;             // atom: push
+  obj_t * atom_pop;              // atom: pop
 
   obj_t * stack;                 // top-of-stack (implemented with pairs)
   obj_t * env;                   // top-level / initial environment
@@ -142,7 +146,7 @@ obj_t *make_clos(obj_t *body, obj_t *env)
   return obj;
 }
 
-obj_t *make_prim(void (*func)(void))
+obj_t *make_prim(void (*func)(obj_t**))
 {
   obj_t *obj = alloc();
   obj->tag = TAG_PRIM;
@@ -250,34 +254,19 @@ obj_t *read(void);
 
 obj_t *read_list(void)
 {
-  skip_white_and_comments();
-  char c = peek();
-  if (c == ')') {
-    advance();
-    return state->nil;
+  if (!state->read_stack) {
+    skip_white_and_comments();
+    char c = peek();
+    if (c == ')') {
+      advance();
+      return state->nil;
+    }
   }
   return make_pair(read(), read_list());
 }
 
-obj_t *read(void)
+obj_t *read_scalar(void)
 {
-  skip_white_and_comments();
-
-  char c = peek();
-  if (!c) FAIL("End of input: could not read()"); // FIXME: BETTER SOLUTION??
-
-  // A directive char is it's own atom
-  if (is_directive(c)) {
-    advance();
-    return intern(&c, 1);
-  }
-
-  // Read a list?
-  if (c == '(') {
-    advance();
-    return read_list();
-  }
-
   // Otherwise, assume atom or num and read it
   size_t start = state->input_pos;
   while (!is_punctuation(peek())) advance();
@@ -291,6 +280,56 @@ obj_t *read(void)
     return make_num(num);
   } else { // atom
     return intern(str, n);
+  }
+}
+
+obj_t *read(void)
+{
+  obj_t *read_stack = state->read_stack;
+  if (read_stack) {
+    state->read_stack = cdr(read_stack);
+    return car(read_stack);
+  }
+
+  skip_white_and_comments();
+
+  char c = peek();
+  if (!c) FAIL("End of input: could not read()"); // FIXME: BETTER SOLUTION??
+
+  // A qutoe?
+  if (c == '\'') {
+    advance();
+    return state->atom_quote;
+  }
+
+  // A push?
+  if (c == '^') {
+    advance();
+    obj_t *s = NULL;
+    s = make_pair(state->atom_push, s);
+    s = make_pair(read_scalar(), s);
+    s = make_pair(state->atom_quote, s);
+    state->read_stack = s;
+    return read(); // tail-call to dump the read stack
+  }
+
+  // A pop?
+  if (c == '$') {
+    advance();
+    obj_t *s = NULL;
+    s = make_pair(state->atom_pop, s);
+    s = make_pair(read_scalar(), s);
+    s = make_pair(state->atom_quote, s);
+    state->read_stack = s;
+    return read(); // tail-call to dump the read stack
+  }
+
+  // Read a list?
+  if (c == '(') {
+    advance();
+    return read_list();
+  } else {
+    return read_scalar();
   }
 }
 
@@ -373,7 +412,7 @@ obj_t *env_define(obj_t *env, obj_t *key, obj_t *val)
   return make_pair(make_pair(key, val), env);
 }
 
-obj_t *env_define_prim(obj_t *env, const char *name, void (*func)(void))
+obj_t *env_define_prim(obj_t *env, const char *name, void (*func)(obj_t **env))
 {
   return env_define(env, intern(name, strlen(name)), make_prim(func));
 }
@@ -409,7 +448,7 @@ obj_t *pop()
  * Eval
  ******************************************************************/
 
-void eval(obj_t *expr, obj_t *env);
+void eval(obj_t *expr, obj_t **env);
 
 void compute(obj_t *comp, obj_t *env)
 {
@@ -418,33 +457,24 @@ void compute(obj_t *comp, obj_t *env)
     print(comp);
   }
 
-  if (comp == state->nil) return; // all-done
+  while (comp != state->nil) {
+    // unpack
+    obj_t *cmd  = car(comp);
+    comp = cdr(comp);
 
-  // unpack
-  obj_t *cmd  = car(comp);
-  obj_t *rest = cdr(comp);
+    if (cmd == state->atom_quote) {
+      if (comp == state->nil) FAIL("Expected data followng a quote directive (')");
+      push(car(comp));
+      comp = cdr(comp);
+      continue;
+    }
 
-  if (cmd == state->atom_quote) {
-    if (rest == state->nil) FAIL("Expected data followng a quote directive (')");
-    push(car(rest));
-    rest = cdr(rest);
-  } else if (cmd == state->atom_push) {
-    if (rest == state->nil || !IS_ATOM(car(rest))) FAIL("Expected an atom followng a push directive (^)");
-    push(env_find(env, car(rest)));
-    rest = cdr(rest);
-  } else if (cmd == state->atom_pop) {
-    if (rest == state->nil || !IS_ATOM(car(rest))) FAIL("Expected an atom followng a pop directive ($)");
-    env = env_define(env, car(rest), pop());
-    rest = cdr(rest);
-  } else {
     // atoms and (...) get ordinary eval
-    eval(cmd, env);
+    eval(cmd, &env);
   }
-
-  compute(rest, env); // tail-call loop
 }
 
-void eval(obj_t *expr, obj_t *env)
+void eval(obj_t *expr, obj_t **env)
 {
   if (DEBUG) {
     printf("eval: ");
@@ -452,16 +482,16 @@ void eval(obj_t *expr, obj_t *env)
   }
 
   if (IS_ATOM(expr)) {
-    obj_t *val = env_find(env, expr);
+    obj_t *val = env_find(*env, expr);
     if (IS_CLOS(val)) { // closure
       return compute(val->clos.body, val->clos.env);
     } else if (IS_PRIM(val)) { // primitive
-      return val->prim.func();
+      return val->prim.func(env);
     } else {
       return push(val);
     }
   } else if (IS_NIL(expr) || IS_PAIR(expr)) {
-    return push(make_clos(expr, env));
+    return push(make_clos(expr, *env));
   } else {
     return push(expr);
   }
@@ -471,17 +501,19 @@ void eval(obj_t *expr, obj_t *env)
  * Primitives
  ******************************************************************/
 
-void prim_eq(void)    { push(obj_equal(pop(), pop()) ? state->atom_true : state->nil); }
-void prim_cons(void)  { obj_t *a, *b; a = pop(); b = pop(); push(make_pair(a, b)); }
-void prim_car(void)   { push(car(pop())); }
-void prim_cdr(void)   { push(cdr(pop())); }
-void prim_cswap(void) { if (pop() == state->atom_true) { obj_t *a, *b; a = pop(); b = pop(); push(a); push(b); } }
-void prim_read(void)  { push(read()); }
-void prim_print(void) { print(pop()); }
-void prim_stack(void) { push(state->stack); }
-void prim_tag(void)   { push(make_num(pop()->tag)); }
-void prim_sub(void)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
-void prim_mul(void)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
+void prim_push(obj_t **env) { push(env_find(*env, pop())); }
+void prim_pop(obj_t **env)  { obj_t *k, *v; k = pop(); v = pop(); *env = env_define(*env, k, v); }
+void prim_eq(obj_t **_)     { push(obj_equal(pop(), pop()) ? state->atom_true : state->nil); }
+void prim_cons(obj_t **_)   { obj_t *a, *b; a = pop(); b = pop(); push(make_pair(a, b)); }
+void prim_car(obj_t **_)    { push(car(pop())); }
+void prim_cdr(obj_t **_)    { push(cdr(pop())); }
+void prim_cswap(obj_t **_)  { if (pop() == state->atom_true) { obj_t *a, *b; a = pop(); b = pop(); push(a); push(b); } }
+void prim_read(obj_t **_)   { push(read()); }
+void prim_print(obj_t **_)  { print(pop()); }
+void prim_stack(obj_t **_)  { push(state->stack); }
+void prim_tag(obj_t **_)    { push(make_num(pop()->tag)); }
+void prim_sub(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
+void prim_mul(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
 
 /*******************************************************************
  * Misc
@@ -514,21 +546,25 @@ void setup(const char *input_path)
   state->input_len = strlen(state->input_str);
   state->input_pos = 0;
 
-  state->nil   = make_nil();
+  state->read_stack = NULL;
+  state->nil        = make_nil();
 
   state->interned_atoms = state->nil;
   state->atom_true      = intern("t", 1);
-  state->atom_quote     = intern("'", 1);
-  state->atom_push      = intern("^", 1);
-  state->atom_pop       = intern("$", 1);
+  state->atom_quote     = intern("quote", 5);
+  state->atom_push      = intern("push", 4);
+  state->atom_pop       = intern("pop", 3);
 
   state->stack = state->nil;
 
   obj_t *env = state->nil;
+  env = env_define_prim(env, "push",  &prim_push);
+  env = env_define_prim(env, "pop",   &prim_pop);
   env = env_define_prim(env, "cons",  &prim_cons);
   env = env_define_prim(env, "car",   &prim_car);
   env = env_define_prim(env, "cdr",   &prim_cdr);
   env = env_define_prim(env, "eq",    &prim_eq);
+  env = env_define_prim(env, "pop",   &prim_pop);
   env = env_define_prim(env, "cswap", &prim_cswap);
   env = env_define_prim(env, "read",  &prim_read);
   env = env_define_prim(env, "print", &prim_print);
@@ -549,6 +585,7 @@ int main(int argc, char *argv[])
 
   obj_t *obj = read();
   compute(obj, state->env);
+  //print(obj);
 
   return 1;
 }
