@@ -11,11 +11,6 @@
   ; rec: Recursion via Y-Combinator
   ($f ($x (^x x) f) dup force) $Y ($g (^g Y)) $rec
 
-  ; explode
-  ($self $list
-    ^if ('() ^list eq) () (^list cdr self ^list car) endif
-  ) rec $explode
-
   ; env-find
   ($self $key $env
     ^if (^env is-nil) ('NOT_FOUND_IN_ENV ^key cons print FAIL) (
@@ -24,9 +19,6 @@
         (^env cdr ^key self) endif
     ) endif
   ) rec $env-find
-
-  ; env-define: $key $val $env
-  (cons cons) $env-define
 
   ; stack operations
   (cons)                    $push
@@ -54,7 +46,7 @@
       ) (^if  (^cmd '$ eq) (
         ^comp pop $name $comp
         ^stack pop $val $stack
-        ^env ^val ^name env-define $env
+        ^env ^val ^name cons cons $env
         ^env ^comp ^stack self
       ) (
         ^env ^cmd ^stack eval $stack
@@ -66,32 +58,23 @@
   ($eval $stack $expr $env (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-atom) (
       ^env ^expr env-find $callable
-      ^if (^callable is-closure) (
-        ^callable explode $_ ^stack compute
-      ) (^if (^callable is-clos) (
-        ^stack callable
-      ) (
-        ^stack ^callable push
-      ) endif) endif
-    ) (^if ((^expr is-nil) (^expr is-pair) or) (
-      ^stack ^env ^expr make-closure push
-    ) (
-      ^stack ^expr push
-    ) endif) endif
+      ^if (^callable is-closure) (^callable cdr dup cdr car 't cswap car ^stack compute)
+      (^if (^callable is-clos)   (^stack callable)
+                                 (^stack ^callable push) endif) endif)
+    (^if ((^expr is-nil) (^expr is-pair) or)
+      (^stack ^env ^expr make-closure push)
+      (^stack ^expr push) endif) endif
   ) rec $eval
 
  ; init-env
  '()
  (pop print)        'print  cons cons
- (dup push)         'stack  cons cons
  (pop2 eq push)     'eq     cons cons
  (pop3 cswap push2) 'cswap  cons cons
  (pop2 - push)      '-      cons cons
  (pop2 * push)      '*      cons cons
- $env
 
- read $expr
- ^env ^expr '() ^eval compute
+ read '() ^eval compute
 )
 
 (
