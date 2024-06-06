@@ -3,11 +3,15 @@
 
   ($n ^n ^n)                     $dup
   ('t cswap)                     $swap
+  ($a $b ^b ^a ^b)               $over
+  ($a $b $c ^c ^b ^a ^c)         $over2
+  ($a $b $c ^b ^a ^c)            $rot
   ($x x)                         $force
   (force cswap $_ force)         $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif
   ($a $b '() ('() 't b if) a if) $and
   ($a $b ('() 't b if) 't a if)  $or
+
 
   ; rec: Recursion via Y-Combinator
   ($f ($x (^x x) f) dup force) $Y ($g (^g Y)) $rec
@@ -20,6 +24,7 @@
         (^env cdr ^key self) endif
     ) endif
   ) rec $env-find
+
 
   ; stack operations
   (cons)                                      $stack-push
@@ -60,24 +65,24 @@
  ; init-env
  '()
 
- ($stack $env
-   ^stack stack-pop $name $stack
-   ^env ^name env-find $value
-   ^env ^stack ^value stack-push) 'push cons cons
-
- ($stack $env
-   ^stack stack-pop $name $stack
-   ^stack stack-pop $value $stack
-   ^env ^value ^name cons cons ^stack) 'pop cons cons
-
- (dup cons)                     'stack  cons cons
- (stack-pop print)              'print  cons cons
- (stack-pop2 eq stack-push)     'eq     cons cons
- (stack-pop3 cswap stack-push2) 'cswap  cons cons
- (stack-pop2 - stack-push)      '-      cons cons
- (stack-pop2 * stack-push)      '*      cons cons
+ (stack-pop over2 swap env-find stack-push)  'push   cons cons
+ (stack-pop2 cons rot swap cons swap)        'pop    cons cons
+ (stack-pop car stack-push)                  'car    cons cons
+ (stack-pop cdr stack-push)                  'cdr    cons cons
+ (dup cons)                                  'stack  cons cons
+ (stack-pop print)                           'print  cons cons
+ (stack-pop2 eq stack-push)                  'eq     cons cons
+ (stack-pop3 cswap stack-push2)              'cswap  cons cons
+ (stack-pop2 - stack-push)                   '-      cons cons
+ (stack-pop2 * stack-push)                   '*      cons cons
 
  read '() ^eval compute
+)
+
+(
+ 45
+ '(a b c) cdr car pop
+ ^b print
 )
 
 (
