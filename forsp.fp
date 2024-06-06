@@ -62,21 +62,17 @@
       ) endif) endif) endif) endif
   ) rec $compute
 
-  ; apply: $eval $stack $expr
-  ($eval $stack $expr (^eval compute) $compute ; curry eval into compute
-    ^if (^expr is-closure) (
-      ^expr explode $_ ^stack compute
-    ) (^if (^expr is-clos) (
-      ^stack expr
-    ) (
-      ^stack ^expr push
-    ) endif) endif
-  ) $apply
-
   ; eval: $eval $stack $expr $env
-  ($eval $stack $expr $env (^eval apply) $apply ; curry eval into apply
+  ($eval $stack $expr $env (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-atom) (
-      ^env ^expr env-find ^stack apply
+      ^env ^expr env-find $callable
+      ^if (^callable is-closure) (
+        ^callable explode $_ ^stack compute
+      ) (^if (^callable is-clos) (
+        ^stack callable
+      ) (
+        ^stack ^callable push
+      ) endif) endif
     ) (^if ((^expr is-nil) (^expr is-pair) or) (
       ^stack ^env ^expr make-closure push
     ) (
@@ -95,8 +91,7 @@
  $env
 
  read $expr
- ^env ^expr '() eval
- pop 't cswap ^eval apply
+ ^env ^expr '() ^eval compute
 )
 
 (

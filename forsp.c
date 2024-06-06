@@ -444,23 +444,6 @@ void compute(obj_t *comp, obj_t *env)
   compute(rest, env); // tail-call loop
 }
 
-void apply(obj_t *expr)
-{
-  if (DEBUG) {
-    printf("apply: ");
-    print(expr);
-  }
-
-  if (IS_CLOS(expr)) { // closure
-    return compute(expr->clos.body, expr->clos.env);
-  } else if (IS_PRIM(expr)) { // primitive
-    return expr->prim.func();
-  }
-
-  // everything else applies and reproduces itself
-  push(expr);
-}
-
 void eval(obj_t *expr, obj_t *env)
 {
   if (DEBUG) {
@@ -469,11 +452,18 @@ void eval(obj_t *expr, obj_t *env)
   }
 
   if (IS_ATOM(expr)) {
-    apply(env_find(env, expr));
+    obj_t *val = env_find(env, expr);
+    if (IS_CLOS(val)) { // closure
+      return compute(val->clos.body, val->clos.env);
+    } else if (IS_PRIM(val)) { // primitive
+      return val->prim.func();
+    } else {
+      return push(val);
+    }
   } else if (IS_NIL(expr) || IS_PAIR(expr)) {
-    push(make_clos(expr, env));
+    return push(make_clos(expr, env));
   } else {
-    push(expr);
+    return push(expr);
   }
 }
 
@@ -558,8 +548,7 @@ int main(int argc, char *argv[])
   setup(argv[1]);
 
   obj_t *obj = read();
-  eval(obj, state->env);
-  apply(pop());
+  compute(obj, state->env);
 
   return 1;
 }
