@@ -79,12 +79,9 @@
  read '() ^eval compute
 )
 
-(
- 45
- '(a b c) cdr car pop
- ^b print
-)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Input: factorial
 (
   ($x x)                       $force
   (force cswap $_ force)       $if
