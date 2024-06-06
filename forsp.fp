@@ -1,8 +1,9 @@
 (
   (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
 
-  ($x x)                         $force
   ($n ^n ^n)                     $dup
+  ('t cswap)                     $swap
+  ($x x)                         $force
   (force cswap $_ force)         $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif
   ($a $b '() ('() 't b if) a if) $and
@@ -23,7 +24,7 @@
   ; stack operations
   (cons)                    $push
   ($b push ^b push)         $push2
-  (dup cdr 't cswap car)    $pop
+  (dup cdr swap car)        $pop
   (pop $b pop ^b)           $pop2
   (pop $c pop $b pop ^b ^c) $pop3
 
@@ -58,7 +59,7 @@
   ($eval $stack $expr $env (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-atom) (
       ^env ^expr env-find $callable
-      ^if (^callable is-closure) (^callable cdr dup cdr car 't cswap car ^stack compute)
+      ^if (^callable is-closure) (^callable cdr dup cdr car swap car ^stack compute)
       (^if (^callable is-clos)   (^stack callable)
                                  (^stack ^callable push) endif) endif)
     (^if ((^expr is-nil) (^expr is-pair) or)
