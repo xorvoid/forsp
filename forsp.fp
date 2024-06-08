@@ -1,6 +1,5 @@
 (
-  (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
-
+  ; core utility functions
   ($n ^n ^n)                     $dup
   ($_)                           $drop
   ('t cswap)                     $swap
@@ -11,10 +10,12 @@
   ($c $t $f c ^f ^t rot cswap $_ force) $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif
   ($a $b '() ('() 't b if) a if) $and
-  ($a $b ('() 't b if) 't a if)  $or
 
+  ; object type predicate functions
+  (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
+  ($x ('() 't (^x is-pair) if) 't (^x is-nil) if) $is-list
 
-  ; rec: Recursion via Y-Combinator
+  ; recursion via y-combinator
   ($f ($x (^x x) f) dup force) $Y ($g (^g Y)) $rec
 
   ; env-find
@@ -24,7 +25,6 @@
     ) endif
   ) rec $env-find
 
-
   ; stack operations
   (cons)                                      $stack-push
   ($b stack-push ^b stack-push)               $stack-push2
@@ -32,12 +32,14 @@
   (stack-pop $b stack-pop ^b)                 $stack-pop2
   (stack-pop $c stack-pop $b stack-pop ^b ^c) $stack-pop3
 
+  ; closure construction and checking
   ($expr $env '() ^env cons ^expr cons '#closure cons)  $make-closure
   ($expr (^expr car '#closure eq) (^expr is-pair) and)  $is-closure
+  (dup cdr car swap car)  $unpack-closure
 
   ; compute: $comp $stack $env -> $stack
   ($self $eval (^eval self) $self ; curry eval into self
-    ^if (dup is-nil) (rot drop drop) ( ; false: result ^stack
+    ^if (dup is-nil) (rot drop drop) ( ; false case: return $stack
       stack-pop
       ^if (dup 'quote eq)
         (drop stack-pop rot swap stack-push swap self)
@@ -46,21 +48,19 @@
   ) rec $compute
 
   ; eval: $expr $stack $env -> $stack $env
-  ($eval $expr $stack $env (^eval compute) $compute ; curry eval into compute
-    ^if (^expr is-atom) (
-      ^env ^stack ^expr
+  ($eval (^eval compute) $compute ; curry eval into compute
+    ^if (dup is-atom) (
       over2 swap env-find dup $callable
-      ^if (dup is-closure) (swap $stack cdr dup cdr car swap car ^stack swap compute)
+      ^if (dup is-closure) (swap $stack cdr unpack-closure ^stack swap compute)
       (^if (dup is-clos)   (force)
-                           (stack-push) endif) endif)
-    (^if ((^expr is-nil) (^expr is-pair) or)
-      (^env ^stack ^env ^expr make-closure stack-push)
-      (^env ^stack ^expr stack-push) endif) endif
+                           (stack-push)  endif) endif)
+    (^if (dup is-list)
+      (over2 swap make-closure stack-push)
+      (stack-push) endif) endif
   ) rec $eval
 
  ; init-env
  '()
-
  (stack-pop over2 swap env-find stack-push)  'push   cons cons
  (stack-pop2 cons rot swap cons swap)        'pop    cons cons
  (stack-pop2 cons stack-push)                'cons   cons cons
