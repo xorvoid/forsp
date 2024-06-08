@@ -564,7 +564,6 @@ void setup(const char *input_path)
   env = env_define_prim(env, "car",   &prim_car);
   env = env_define_prim(env, "cdr",   &prim_cdr);
   env = env_define_prim(env, "eq",    &prim_eq);
-  env = env_define_prim(env, "pop",   &prim_pop);
   env = env_define_prim(env, "cswap", &prim_cswap);
   env = env_define_prim(env, "read",  &prim_read);
   env = env_define_prim(env, "print", &prim_print);
