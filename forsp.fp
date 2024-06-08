@@ -2,12 +2,13 @@
   (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
 
   ($n ^n ^n)                     $dup
+  ($_)                           $drop
   ('t cswap)                     $swap
   ($a $b ^b ^a ^b)               $over
   ($a $b $c ^c ^b ^a ^c)         $over2
   ($a $b $c ^b ^a ^c)            $rot
   ($x x)                         $force
-  (force cswap $_ force)         $if
+  ($c $t $f c ^f ^t rot cswap $_ force) $if
   ($f $t $c $fn ^f ^t ^c fn)     $endif
   ($a $b '() ('() 't b if) a if) $and
   ($a $b ('() 't b if) 't a if)  $or
@@ -19,9 +20,7 @@
   ; env-find
   ($self $key $env
     ^if (^env is-nil) ('NOT_FOUND_IN_ENV ^key cons print FAIL) (
-      ^env car $kv
-      ^if (^kv car ^key eq) (^kv cdr)
-        (^env cdr ^key self) endif
+      ^if (^env car car ^key eq) (^env car cdr) (^env cdr ^key self) endif
     ) endif
   ) rec $env-find
 
@@ -36,25 +35,22 @@
   ($expr $env '() ^env cons ^expr cons '#closure cons)  $make-closure
   ($expr (^expr car '#closure eq) (^expr is-pair) and)  $is-closure
 
-  ; compute
-  ($self $eval $stack $comp $env (^eval self) $self ; curry eval into self
-    ^if (^comp is-nil) ^stack (
-      ^comp stack-pop $cmd $comp
-      ^if (^cmd 'quote eq) (
-        ^comp stack-pop $literal $comp
-        ^stack ^literal stack-push $stack
-        ^env ^comp ^stack self
-      ) (
-        ^env ^cmd ^stack eval $stack $env
-        ^env ^comp ^stack self
-      ) endif) endif
+  ; compute: $comp $stack $env -> $stack
+  ($self $eval (^eval self) $self ; curry eval into self
+    ^if (dup is-nil) (rot drop drop) ; result ^stack on false
+    (
+      stack-pop
+      ^if (dup 'quote eq)
+        (drop stack-pop rot swap stack-push swap self)
+        (swap $comp swap eval ^comp self) endif
+    ) endif
   ) rec $compute
 
-  ; eval: $eval $stack $expr $env -> $stack $env
+  ; eval: $stack $expr $env -> $stack $env
   ($eval $stack $expr $env (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-atom) (
       ^env ^expr env-find $callable
-      ^if (^callable is-closure) (^env ^callable cdr dup cdr car swap car ^stack compute)
+      ^if (^callable is-closure) (^env ^callable cdr dup cdr car swap car ^stack swap compute)
       (^if (^callable is-clos)   (^env ^stack callable)
                                  (^env ^stack ^callable stack-push) endif) endif)
     (^if ((^expr is-nil) (^expr is-pair) or)
@@ -67,6 +63,7 @@
 
  (stack-pop over2 swap env-find stack-push)  'push   cons cons
  (stack-pop2 cons rot swap cons swap)        'pop    cons cons
+ (stack-pop2 cons stack-push)                'cons   cons cons
  (stack-pop car stack-push)                  'car    cons cons
  (stack-pop cdr stack-push)                  'cdr    cons cons
  (dup cons)                                  'stack  cons cons
@@ -76,9 +73,10 @@
  (stack-pop2 - stack-push)                   '-      cons cons
  (stack-pop2 * stack-push)                   '*      cons cons
 
- read '() ^eval compute
+ '() read ^eval compute
 )
 
+;('a 'b cons 'c cons print )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Input: factorial
