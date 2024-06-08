@@ -37,22 +37,22 @@
 
   ; compute: $comp $stack $env -> $stack
   ($self $eval (^eval self) $self ; curry eval into self
-    ^if (dup is-nil) (rot drop drop) ; result ^stack on false
-    (
+    ^if (dup is-nil) (rot drop drop) ( ; false: result ^stack
       stack-pop
       ^if (dup 'quote eq)
         (drop stack-pop rot swap stack-push swap self)
-        (swap $comp swap eval ^comp self) endif
+        (swap $comp eval ^comp self) endif
     ) endif
   ) rec $compute
 
-  ; eval: $stack $expr $env -> $stack $env
-  ($eval $stack $expr $env (^eval compute) $compute ; curry eval into compute
+  ; eval: $expr $stack $env -> $stack $env
+  ($eval $expr $stack $env (^eval compute) $compute ; curry eval into compute
     ^if (^expr is-atom) (
-      ^env ^expr env-find $callable
-      ^if (^callable is-closure) (^env ^callable cdr dup cdr car swap car ^stack swap compute)
-      (^if (^callable is-clos)   (^env ^stack callable)
-                                 (^env ^stack ^callable stack-push) endif) endif)
+      ^env ^stack ^expr
+      over2 swap env-find dup $callable
+      ^if (dup is-closure) (swap $stack cdr dup cdr car swap car ^stack swap compute)
+      (^if (dup is-clos)   (force)
+                           (stack-push) endif) endif)
     (^if ((^expr is-nil) (^expr is-pair) or)
       (^env ^stack ^env ^expr make-closure stack-push)
       (^env ^stack ^expr stack-push) endif) endif
