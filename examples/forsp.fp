@@ -56,6 +56,9 @@
       (stack-push) endif) endif
   ) rec $eval
 
+ ; tag function
+ ($x ((^x tag) 4 ^x is-closure if) 5 (^x is-clos) if) $new-tag
+
  ; init-env
  '()
  (stack-pop over2 swap env-find stack-push)  'push   cons cons
@@ -65,10 +68,10 @@
  (stack-pop cdr stack-push)                  'cdr    cons cons
  (stack-pop2 eq stack-push)                  'eq     cons cons
  (stack-pop3 cswap stack-push2)              'cswap  cons cons
+ (stack-pop new-tag stack-push)              'tag    cons cons
  (read stack-push)                           'read   cons cons
  (stack-pop print)                           'print  cons cons
  (dup cons)                                  'stack  cons cons
- (stack-pop tag stack-push)                  'tag    cons cons
  (stack-pop2 - stack-push)                   '-      cons cons
  (stack-pop2 * stack-push)                   '*      cons cons
 

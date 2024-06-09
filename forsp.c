@@ -508,10 +508,10 @@ void prim_cons(obj_t **_)   { obj_t *a, *b; a = pop(); b = pop(); push(make_pair
 void prim_car(obj_t **_)    { push(car(pop())); }
 void prim_cdr(obj_t **_)    { push(cdr(pop())); }
 void prim_cswap(obj_t **_)  { if (pop() == state->atom_true) { obj_t *a, *b; a = pop(); b = pop(); push(a); push(b); } }
+void prim_tag(obj_t **_)    { push(make_num(pop()->tag)); }
 void prim_read(obj_t **_)   { push(read()); }
 void prim_print(obj_t **_)  { print(pop()); }
 void prim_stack(obj_t **_)  { push(state->stack); }
-void prim_tag(obj_t **_)    { push(make_num(pop()->tag)); }
 void prim_sub(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
 void prim_mul(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
 
@@ -558,6 +558,8 @@ void setup(const char *input_path)
   state->stack = state->nil;
 
   obj_t *env = state->nil;
+
+  // Core primitives
   env = env_define_prim(env, "push",  &prim_push);
   env = env_define_prim(env, "pop",   &prim_pop);
   env = env_define_prim(env, "cons",  &prim_cons);
@@ -565,10 +567,12 @@ void setup(const char *input_path)
   env = env_define_prim(env, "cdr",   &prim_cdr);
   env = env_define_prim(env, "eq",    &prim_eq);
   env = env_define_prim(env, "cswap", &prim_cswap);
+  env = env_define_prim(env, "tag",   &prim_tag);
   env = env_define_prim(env, "read",  &prim_read);
   env = env_define_prim(env, "print", &prim_print);
+
+  // Extra primitives
   env = env_define_prim(env, "stack", &prim_stack);
-  env = env_define_prim(env, "tag",   &prim_tag);
   env = env_define_prim(env, "-",     &prim_sub);
   env = env_define_prim(env, "*",     &prim_mul);
   state->env = env;
