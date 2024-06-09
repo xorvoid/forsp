@@ -6,23 +6,6 @@
 #include <string.h>
 
 #define FAIL(...) do { fprintf(stderr, "FAIL: "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); abort(); } while (0)
-#define ARRAY_SIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
-
-
-static bool parse_i64(const char *str, size_t len, int64_t *_out)
-{
-  // Copy to ensure null-termination
-  static char buf[20];
-  memcpy(buf, str, len);
-  buf[len] = '\0';
-
-  int64_t n = atoll(buf);
-  if (n == 0 && 0 != strcmp(buf, "0")) {
-    return false;
-  }
-  *_out = n;
-  return true;
-}
 
 /*******************************************************************
  * Params
@@ -263,6 +246,21 @@ obj_t *read_list(void)
     }
   }
   return make_pair(read(), read_list());
+}
+
+static bool parse_i64(const char *str, size_t len, int64_t *_out)
+{
+  // Copy to ensure null-termination
+  static char buf[20];
+  memcpy(buf, str, len);
+  buf[len] = '\0';
+
+  int64_t n = atoll(buf);
+  if (n == 0 && 0 != strcmp(buf, "0")) {
+    return false;
+  }
+  *_out = n;
+  return true;
 }
 
 obj_t *read_scalar(void)
@@ -588,7 +586,6 @@ int main(int argc, char *argv[])
 
   obj_t *obj = read();
   compute(obj, state->env);
-  //print(obj);
 
   return 1;
 }
