@@ -16,7 +16,7 @@ FORSP has:
   - A value/operand stack like FORTH
   - An ability to express the lambda calculus
   - A Call-By-Push-Value evaluation order
-  - Only 3 syntax special forms
+  - Only 3 syntax special forms: ' ^ $
   - Only 1 eval-time special form: quote
   - Only 10 primitive functions need to self-implement
   - Ability to self-implement in very little code
