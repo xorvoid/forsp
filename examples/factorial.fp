@@ -5,8 +5,6 @@
   ()                           $[
   ()                           $]
 
-  ('debug print stack print DEBUG_HALT) $debug
-
   ; Y-Combinator
   ($f
     ($x (^x x) f)
