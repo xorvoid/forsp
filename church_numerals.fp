@@ -1,9 +1,14 @@
 (
+  ; utilities
+  ($x x)                   $force
+  ($fn ($x ($y ^y ^x fn))) $curry2
+
   ; church numerals: core
-  (($f))                 $zero
-  ($n ($f ^f n f))       $succ
-  ($m $n ($f ^f n ^f m)) $add
-  ($m $n ($f (^f n) m))  $mult
+  (($f))                            $zero
+  ($n ($f ^f n f))                  $succ
+  ($m $n ($f ^f n ^f m))            $add
+  ($m $n ($f (^f n) m))             $mult
+  ($m $n ($f ^f ^m curry2 n force)) $exp
 
   ; church pred function: standard
   ($n ($f $x ($u ^x) ($g ($h ^f g h)) n $k ($x ^x) k)) $pred
@@ -44,6 +49,9 @@
   nine pred-alt show
   nine nine mult pred show
   nine nine mult pred-alt show
+  one one exp show
+  four three exp show
+  three four exp show
 )
 
 
