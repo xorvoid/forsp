@@ -1,12 +1,20 @@
 (
   ; church numerals: core
-  (($f))           $zero
-  ($n ($f ^f n f)) $succ
+  (($f))                 $zero
+  ($n ($f ^f n f))       $succ
   ($m $n ($f ^f n ^f m)) $add
   ($m $n ($f (^f n) m))  $mult
 
-  ; church pred function
+  ; church pred function: standard
   ($n ($f $x ($u ^x) ($g ($h ^f g h)) n $k ($x ^x) k)) $pred
+
+  ; church pred function: alternative
+  ($x $y ($f ^y ^x f))                     $pair
+  ($x $y ^x)                               $first
+  ($x $y ^y)                               $second
+  zero zero pair                           $pred-init
+  ($p ^second p succ ^second p pair)       $pred-inc
+  ($n ^pred-init ^pred-inc n $p ^first p)  $pred-alt
 
   ; church numerals: constants
   (zero  succ) $one
@@ -28,6 +36,14 @@
   eight nine add show
   seven succ nine add succ show
   seven eight mult show
+  zero pred show
+  one pred show
   nine pred show
+  zero pred-alt show
+  one pred-alt show
+  nine pred-alt show
   nine nine mult pred show
+  nine nine mult pred-alt show
 )
+
+
