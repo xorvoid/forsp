@@ -517,6 +517,9 @@ void prim_stack(obj_t **_) { push(state->stack); }
 void prim_env(obj_t **env) { push(*env); }
 void prim_sub(obj_t **_)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
 void prim_mul(obj_t **_)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
+void prim_nand(obj_t **_)  { obj_t *a, *b; b = pop(); a = pop(); push(make_num(~(obj_i64(a) & obj_i64(b)))); }
+void prim_lsh(obj_t **_)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) << obj_i64(b))); }
+void prim_rsh(obj_t **_)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) >> obj_i64(b))); }
 
 #if USE_LOWLEVEL
 /* Low-level primitives */
@@ -588,6 +591,9 @@ void setup(const char *input_path)
   env = env_define_prim(env, "env",   &prim_env);
   env = env_define_prim(env, "-",     &prim_sub);
   env = env_define_prim(env, "*",     &prim_mul);
+  env = env_define_prim(env, "nand",  &prim_nand);
+  env = env_define_prim(env, "<<",    &prim_lsh);
+  env = env_define_prim(env, ">>",    &prim_rsh);
 
   #if USE_LOWLEVEL
   // Low-level primitives
