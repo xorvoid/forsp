@@ -1,11 +1,11 @@
 (
-  ; Welcome to FORSP: A Forth+Lisp Hybrid Lambda Calculus Language
+  ; Welcome to Forsp: A Forth+Lisp Hybrid Lambda Calculus Language
   ;
   ; As you can see, comment lines always start with the ';' semicolon character.
   ; Also, all code is inside () braces. Actually, all code is an S-Expression, but
   ; if you don't understand what that means, it's okay.
   ;
-  ; In FORSP, we have a value stack. We can print it out as follows:
+  ; In Forsp, we have a value stack. We can print it out as follows:
 
   stack print  ; ()
 
@@ -41,7 +41,7 @@
   ; The * operation multiplies the top-two values on the stack and then pushes it back to stack.
   ; Then "print" prints the value, leaving the stack empty.
 
-  ; Sometimes working only with stack values is challenging. Luckily FORSP has variables as well.
+  ; Sometimes working only with stack values is challenging. Luckily Forsp has variables as well.
   ; We can pop the stack and store to a variable as follows:
 
   5 $my-variable
@@ -58,7 +58,7 @@
 
   ^my-variable ^my-variable * print ; 25
 
-  ; FORSP also has function abstraction. They are simply () parenthesis grouping.
+  ; Forsp also has function abstraction. They are simply () parenthesis grouping.
 
   ($x ^x ^x *)
   stack print  ; (CLOSURE<(quote x pop quote x push quote x push *), 0x600001c26d60>)
@@ -68,7 +68,7 @@
   ; as a "callable function value".
 
   ; Fair enough, but how do we call it? As it turns out "print" and "stack" are both functions.
-  ; To call a function in FORSP, you simply write the function's name. But, our function has no
+  ; To call a function in Forsp, you simply write the function's name. But, our function has no
   ; name yet. So, let's give it one by popping it and binding to a variable name!
 
   $square
@@ -100,9 +100,9 @@
   ($_) $drop
   drop drop drop drop drop
   
-  ; Believe it or now, this is ALL of FORSP's syntax and semantics!
+  ; Believe it or now, this is ALL of Forsp's syntax and semantics!
 
-  ; FORSP has only a small number of built-in function primitives:
+  ; Forsp has only a small number of built-in function primitives:
   ; ---------------------------------------------------------------
   ;
   ;   CORE: Primitives needed to self-implement
@@ -206,7 +206,7 @@
     ('false print)
   endif
 
-  ; Finally, we'll finish with recursion. FORSP uses the Y-Combinator for recursion
+  ; Finally, we'll finish with recursion. Forsp uses the Y-Combinator for recursion
 
   ($f ($x (^x x) f) dup force) $Y
 
