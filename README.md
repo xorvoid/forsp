@@ -99,9 +99,15 @@ NOTE: Only tested on Mac M1
 Examples:
 
 ```
+./forsp examples/tutorial.fp
 ./forsp examples/demo.fp
 ./forsp examples/factorial.fp
 ./forsp examples/currying.fp
-./forsp examples/church_numerals.fp
+./forsp examples/church-numerals.fp
+./forsp examples/higher-order-functions.fp
+./forsp examples/church-numerals.fp
+./forsp examples/low-level.fp
+./forsp examples/fibonacci-imperative.fp
+./forsp examples/fibonacci-functional.fp
 ./forsp examples/forsp.fp
 ```
