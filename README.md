@@ -27,7 +27,7 @@ See blog post for details: [Forsp: A Forth+Lisp Hybrid Lambda Calculus Language]
 
 ## Tutorial
 
-The best way to learn Forsp is to read the tutorial: [here](examples/tutorial.fp)
+The best way to learn Forsp is to [read the tutorial](examples/tutorial.fp)
 
 ## Recursive Factorial Example
 
