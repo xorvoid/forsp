@@ -36,8 +36,6 @@ The best way to learn Forsp is to [read the tutorial](examples/tutorial.fp)
   ($x x)                       $force
   (force cswap $_ force)       $if
   ($f $t $c $fn ^f ^t ^c fn)   $endif
-  ()                           $[
-  ()                           $]
 
   ; Y-Combinator
   ($f
@@ -51,8 +49,8 @@ The best way to learn Forsp is to [read the tutorial](examples/tutorial.fp)
 
   ; factorial
   ($self $n
-    ^if [ ^n 0 eq 1 ]
-      ([ ^n 1 - ] self ^n *)
+    ^if (^n 0 eq 1)
+      (^n 1 - self ^n *)
     endif
   ) rec $factorial
 
