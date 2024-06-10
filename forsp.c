@@ -462,7 +462,7 @@ void compute(obj_t *comp, obj_t *env)
     comp = cdr(comp);
 
     if (cmd == state->atom_quote) {
-      if (comp == state->nil) FAIL("Expected data followng a quote directive (')");
+      if (comp == state->nil) FAIL("Expected data following a quote form");
       push(car(comp));
       comp = cdr(comp);
       continue;
