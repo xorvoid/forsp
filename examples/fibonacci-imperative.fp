@@ -44,16 +44,14 @@
 
   ; var [$val -> $get $set]
   ($val
-    ; set function
-    ($new-val env 'val ^new-val set!)
-    ; get function
-    (^val)
+    ($new-val env 'val ^new-val set!)  ; set function
+    (^val )                            ; get function
   ) $var
 
   ; implementation
   1 var $a $set-a
   0 var $b $set-b
-  ^for 0 10 ($_
+  ^for 1 10 ($_
     b $tmp
     a b + set-b
     ^tmp set-a

@@ -43,7 +43,7 @@
   ; map [$fn $list -> $out-list]
   ($self $fn $list
     ^if (^list null?) nil
-      (^list cdr ^fn self ^list car fn cons)
+      ( ^list car fn ^list cdr ^fn self swap cons)
     endif
   ) rec $map
 
