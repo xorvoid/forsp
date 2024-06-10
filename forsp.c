@@ -247,7 +247,9 @@ obj_t *read_list(void)
       return state->nil;
     }
   }
-  return make_pair(read(), read_list());
+  obj_t *first = read();
+  obj_t *second = read_list();
+  return make_pair(first, second);
 }
 
 static bool parse_i64(const char *str, size_t len, int64_t *_out)
