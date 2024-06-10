@@ -1,20 +1,20 @@
 # Forsp: A Forth+Lisp Hybrid Lambda Calculus Language
 
-Forsp is a hybrid language combining FORTH and LISP.
+Forsp is a hybrid language combining Forth and Lisp.
 
 Forsp is a minimalist language.
 
 ## Features
 
 Forsp has:
-  - An S-Expression syntax like LISP
-  - Function abstraction like LISP
-  - Function application like FORTH
-  - An environment structure like LISP
-  - Lexically-scoped closures like LISP (SCHEME)
-  - Cons-cells / lists / atoms like LISP
-  - A value/operand stack like FORTH
-  - An ability to express the lambda calculus
+  - An S-Expression syntax like Lisp
+  - Function abstraction like Lisp
+  - Function application like Forth
+  - An environment structure like Lisp
+  - Lexically-scoped closures like Lisp (Scheme)
+  - Cons-cells / lists / atoms like Lisp
+  - A value/operand stack like Forth
+  - An ability to express the Lambda Calculus
   - A Call-By-Push-Value evaluation order
   - Only 3 syntax special forms: ' ^ $
   - Only 1 eval-time special form: quote
