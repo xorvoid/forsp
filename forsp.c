@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -363,7 +364,7 @@ void print_recurse(obj_t *obj)
   }
   switch (obj->tag) {
     case TAG_ATOM: printf("%s", obj->atom); break;
-    case TAG_NUM:  printf("%lld", obj->num);  break;
+    case TAG_NUM:  printf("%" PRId64, obj->num);  break;
     case TAG_PAIR: {
       printf("(");
       print_recurse(obj->pair.car);
@@ -544,8 +545,8 @@ static char *load_file(const char *filename)
   fseek(fp, 0, SEEK_SET);
 
   char *mem = malloc(file_size+1);
-  ssize_t n = fread(mem, 1, file_size, fp);
-  if ((size_t)n != file_size) FAIL("Failed to read file");
+  size_t n = fread(mem, 1, file_size, fp);
+  if (n != file_size) FAIL("Failed to read file");
 
   mem[file_size] = 0;
   return mem;
