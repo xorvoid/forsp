@@ -12,6 +12,7 @@
  ******************************************************************/
 
 #define DEBUG 0
+#define USE_LOWLEVEL 1
 
 /*******************************************************************
  * Object
@@ -35,7 +36,7 @@
 typedef struct obj obj_t;
 struct obj
 {
-  uint8_t tag;
+  uint64_t tag;
   union {
     const char * atom;
     int64_t      num;
@@ -499,6 +500,7 @@ void eval(obj_t *expr, obj_t **env)
  * Primitives
  ******************************************************************/
 
+/* Core primitives */
 void prim_push(obj_t **env) { push(env_find(*env, pop())); }
 void prim_pop(obj_t **env)  { obj_t *k, *v; k = pop(); v = pop(); *env = env_define(*env, k, v); }
 void prim_eq(obj_t **_)     { push(obj_equal(pop(), pop()) ? state->atom_true : state->nil); }
@@ -509,9 +511,21 @@ void prim_cswap(obj_t **_)  { if (pop() == state->atom_true) { obj_t *a, *b; a =
 void prim_tag(obj_t **_)    { push(make_num(pop()->tag)); }
 void prim_read(obj_t **_)   { push(read()); }
 void prim_print(obj_t **_)  { print(pop()); }
-void prim_stack(obj_t **_)  { push(state->stack); }
-void prim_sub(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
-void prim_mul(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
+
+/* Extra primitives */
+void prim_stack(obj_t **_) { push(state->stack); }
+void prim_env(obj_t **env) { push(*env); }
+void prim_sub(obj_t **_)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) - obj_i64(b))); }
+void prim_mul(obj_t **_)   { obj_t *a, *b; b = pop(); a = pop(); push(make_num(obj_i64(a) * obj_i64(b))); }
+
+#if USE_LOWLEVEL
+/* Low-level primitives */
+void prim_ptr_state(obj_t **_)    { push(make_num((int64_t)state)); }
+void prim_ptr_read(obj_t **_)     { push(make_num(*(int64_t*)obj_i64(pop()))); }
+void prim_ptr_write(obj_t **_)    { obj_t *a, *b; b = pop(); a = pop(); *(int64_t*)obj_i64(a) = obj_i64(b); }
+void prim_ptr_to_obj(obj_t **_)   { push((obj_t*)obj_i64(pop())); }
+void prim_ptr_from_obj(obj_t **_) { push(make_num((int64_t)pop())); }
+#endif
 
 /*******************************************************************
  * Misc
@@ -571,8 +585,19 @@ void setup(const char *input_path)
 
   // Extra primitives
   env = env_define_prim(env, "stack", &prim_stack);
+  env = env_define_prim(env, "env",   &prim_env);
   env = env_define_prim(env, "-",     &prim_sub);
   env = env_define_prim(env, "*",     &prim_mul);
+
+  #if USE_LOWLEVEL
+  // Low-level primitives
+  env = env_define_prim(env, "ptr-state!",    &prim_ptr_state);
+  env = env_define_prim(env, "ptr-read!",     &prim_ptr_read);
+  env = env_define_prim(env, "ptr-write!",    &prim_ptr_write);
+  env = env_define_prim(env, "ptr-to-obj!",   &prim_ptr_to_obj);
+  env = env_define_prim(env, "ptr-from-obj!", &prim_ptr_from_obj);
+  #endif
+
   state->env = env;
 }
 
