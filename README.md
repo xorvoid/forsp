@@ -25,6 +25,10 @@ FORSP has:
 
 See blog post for details: [FORSP: A Forth+Lisp Hybrid Lambda Calculus Language](https://xorvoid.com/forsp.html)
 
+## Tutorial
+
+A "literate program" is provided for a tutorial: [here](examples/tutorial.fp)
+
 ## Recursive Factorial Example
 
 ```
