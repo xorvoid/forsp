@@ -213,26 +213,32 @@ bool is_punctuation(char c) {
 
 void skip_white_and_comments(void)
 {
-  char c = peek();
-  if (c == 0) return; // end-of-data
+  bool tailcall;
 
-  // skip white
-  if (is_white(c)) {
-    advance();
-    return skip_white_and_comments(); // tail-call loop
-  }
+  do {
+    tailcall = false;
 
-  // skip comment
-  if (c == ';') {
-    advance();
-    while (1) {
-      char c = peek();
-      if (c == 0) return; // end-of-data
+    char c = peek();
+    if (c == 0) return; // end-of-data
+
+    // skip white
+    if (is_white(c)) {
       advance();
-      if (c == '\n') break;
+      tailcall = true;  // tail-call loop
     }
-    return skip_white_and_comments(); // tail-call loop
-  }
+
+    // skip comment
+    else if (c == ';') {
+      advance();
+      while (1) {
+        char c = peek();
+        if (c == 0) return; // end-of-data
+        advance();
+        if (c == '\n') break;
+      }
+      tailcall = true;  // tail-call loop
+    }
+  } while (tailcall);
 }
 
 obj_t *read(void);
@@ -486,16 +492,16 @@ void eval(obj_t *expr, obj_t **env)
   if (IS_ATOM(expr)) {
     obj_t *val = env_find(*env, expr);
     if (IS_CLOS(val)) { // closure
-      return compute(val->clos.body, val->clos.env);
+      compute(val->clos.body, val->clos.env);
     } else if (IS_PRIM(val)) { // primitive
-      return val->prim.func(env);
+      val->prim.func(env);
     } else {
-      return push(val);
+      push(val);
     }
   } else if (IS_NIL(expr) || IS_PAIR(expr)) {
-    return push(make_clos(expr, *env));
+    push(make_clos(expr, *env));
   } else {
-    return push(expr);
+    push(expr);
   }
 }
 
