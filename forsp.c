@@ -555,7 +555,7 @@ static char *load_file(const char *filename)
 }
 
 /*******************************************************************
- * Interpretor
+ * Interpreter
  ******************************************************************/
 
 void setup(const char *input_path)
