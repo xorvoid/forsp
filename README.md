@@ -115,7 +115,7 @@ Examples:
 The following assumes you installed Visual Studio 2022 Community Edition with the <strong>desktop development for c++</strong> workload.
 
 First open a DOS command prompt (not powershell), CD to the directory containing `forsp.c`.
-Then set up the visual studio enviroment variables using vcvarsall.bat (don't forget the quotes because the path contains spaces):
+Then set up the visual studio enviroment variables using `vcvarsall.bat` (don't forget the quotes because the path contains spaces):
 
     "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
 
