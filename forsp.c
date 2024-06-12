@@ -322,7 +322,7 @@ obj_t *read(void)
   char c = peek();
   if (!c) FAIL("End of input: could not read()"); // FIXME: BETTER SOLUTION??
 
-  // A qutoe?
+  // A quote?
   if (c == '\'') {
     advance();
     return state->atom_quote;
