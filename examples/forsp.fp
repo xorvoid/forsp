@@ -9,7 +9,7 @@
   ($f $t $c $fn ^f ^t ^c fn)     $endif
 
   ; object type predicate functions
-  (tag 0 eq) $is-nil  (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos
+  (tag 0 eq) $is-nil (tag 1 eq) $is-atom (tag 3 eq) $is-pair (tag 4 eq) $is-clos (tag 5 eq) $is-prim (tag 6 eq) $is-str
   ($x ('() 't (^x is-pair) if) 't (^x is-nil) if) $is-list
 
   ; recursion via y-combinator
