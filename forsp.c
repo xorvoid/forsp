@@ -645,5 +645,5 @@ int main(int argc, char *argv[])
   obj_t *obj = read();
   compute(obj, state->env);
 
-  return 1;
+  return 0;
 }
