@@ -22,7 +22,7 @@
 
   4 3
 
-  ; Now we have something! Let's put on a few more numbers
+  ; Now we have more on the stack! 
 
   stack print ; (3 4 5)
 
@@ -54,7 +54,7 @@
   $_
 
   ; Coolio. Notice that we bound the variable "_" to remove the value from the stack.
-  ; Now, say we wanted to square "my-variable". we could to the following:
+  ; Now, say we wanted to square "my-variable". We could to the following:
 
   ^my-variable ^my-variable * print ; 25
 
@@ -94,7 +94,7 @@
   quote other
   stack print  ; (other (abc (1 foo) ()) (1 2 3) something 36)
 
-  ; Let's define another function to remove values for the stack, and use it
+  ; Let's define another function to remove values from the stack, and use it
   ; to cleanup the stack
 
   ($_) $drop
