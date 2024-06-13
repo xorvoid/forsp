@@ -120,7 +120,7 @@
   ;     read  []                  |  read an s-expression from input data             | read
   ;     print [$obj]              |  print an object as an s-expression               | '(foo bar) print
   ;
-  ;   EXTRA: Additional primitives that are not strictly needed by useful to have
+  ;   EXTRA: Additional primitives that are not strictly needed but useful to have
   ;
   ;     primitive [args]          |  description                                      | example usage
   ;     --------------------------|---------------------------------------------------|--------------
