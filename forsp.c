@@ -49,6 +49,7 @@
 #define TAG_PAIR 3
 #define TAG_CLOS 4
 #define TAG_PRIM 5
+#define TAG_STR  6
 
 #define IS_NIL(obj)  ((obj)->tag == TAG_NIL)
 #define IS_ATOM(obj) ((obj)->tag == TAG_ATOM)
@@ -56,6 +57,7 @@
 #define IS_PAIR(obj) ((obj)->tag == TAG_PAIR)
 #define IS_CLOS(obj) ((obj)->tag == TAG_CLOS)
 #define IS_PRIM(obj) ((obj)->tag == TAG_PRIM)
+#define IS_STR(obj)  ((obj)->tag == TAG_STR)
 
 // Common object structure
 typedef struct obj obj_t;
@@ -76,6 +78,11 @@ struct obj
     struct {
       void (*func)(obj_t **env);
     } prim;
+    struct {
+      char * data;
+      size_t length;
+      uint8_t freeable;
+    } string;
   };
 };
 
@@ -106,7 +113,22 @@ state_t state[1];
 
 obj_t *alloc(void)
 {
-  return (obj_t*)malloc(sizeof(obj_t));
+  obj_t *obj = (obj_t*)malloc(sizeof(obj_t));
+  return obj;
+}
+
+void free_obj(obj_t *obj) {
+  switch(obj->tag) {
+    case TAG_ATOM:
+      free((void *) obj->atom);
+      break;
+    case TAG_STR:
+      if (obj->string.freeable) {
+        free(obj->string.data);
+      }
+  }
+
+  free(obj);
 }
 
 obj_t *make_nil(void)
@@ -160,6 +182,16 @@ obj_t *make_prim(void (*func)(obj_t**))
   obj_t *obj = alloc();
   obj->tag = TAG_PRIM;
   obj->prim.func = func;
+  return obj;
+}
+
+obj_t *make_str(char *data, size_t length, int freeable)
+{
+  obj_t *obj = alloc();
+  obj->tag = TAG_STR;
+  obj->string.data = data;
+  obj->string.length = length;
+  obj->string.freeable = freeable;
   return obj;
 }
 
@@ -293,6 +325,42 @@ static bool parse_i64(const char *str, size_t len, int64_t *_out)
 
 obj_t *read_scalar(void)
 {
+  if (peek() == '"') {
+    advance();
+    char *string = malloc(1);
+    int length = 1;
+    while (true) {
+      char c = peek();
+      advance();
+
+      if (c == '"') {
+        return make_str(string, length - 1, 1);
+      }
+
+      if (c == '\\') {
+        if (peek() == 'n') {
+          advance();
+          c = 0x0a;
+        } else if (peek() == 'x') {
+          advance();
+
+          char bytes[3];
+          bytes[0] = peek();
+          advance();
+          bytes[1] = peek();
+          advance();
+          bytes[2] = 0;
+
+          c = (char) strtol((char *) &bytes, NULL, 16);
+        }
+      }
+      string = realloc(string, length + 1);
+      string[length - 1] = c;
+      string[length] = 0;
+      length++;
+    }
+  }
+
   // Otherwise, assume atom or num and read it
   size_t start = state->input_pos;
   while (!is_punctuation(peek())) advance();
@@ -404,6 +472,11 @@ void print_recurse(obj_t *obj)
     case TAG_PRIM: {
       printf("PRIM<%p>", obj->prim.func);
     } break;
+    case TAG_STR: {
+      for (int i = 0; i < obj->string.length; i++) {
+        printf("%c", obj->string.data[i]);
+      }
+    }
   }
 }
 
@@ -538,6 +611,10 @@ void prim_cswap(obj_t **_)  { if (pop() == state->atom_true) { obj_t *a, *b; a =
 void prim_tag(obj_t **_)    { push(make_num(pop()->tag)); }
 void prim_read(obj_t **_)   { push(read()); }
 void prim_print(obj_t **_)  { print(pop()); }
+void prim_mstr(obj_t **_)   { int64_t l = obj_i64(pop()); push(make_str(calloc(1, l), l, 1)); }
+void prim_speek(obj_t **_)  { int64_t o = obj_i64(pop()); obj_t *s = pop(); if (IS_STR(s)) { push(make_num(o >= s->string.length ? 0 : s->string.data[o])); } }
+void prim_spoke(obj_t **_)  { int64_t v, o; v = obj_i64(pop()); o = obj_i64(pop()); obj_t *s = pop(); if (IS_STR(s) && o < s->string.length) { s->string.data[o] = v; } }
+void prim_memview(obj_t **_){ int64_t s, a; s = obj_i64(pop()); a = obj_i64(pop()); push(make_str((char *) a, s, 0)); }
 
 /* Extra primitives */
 void prim_stack(obj_t **_) { push(state->stack); }
@@ -612,6 +689,10 @@ void setup(const char *input_path)
   env = env_define_prim(env, "tag",   &prim_tag);
   env = env_define_prim(env, "read",  &prim_read);
   env = env_define_prim(env, "print", &prim_print);
+  env = env_define_prim(env, "make-string", &prim_mstr);
+  env = env_define_prim(env, "string-peek", &prim_speek);
+  env = env_define_prim(env, "string-poke", &prim_spoke);
+  env = env_define_prim(env, "string-memview", &prim_memview);
 
   // Extra primitives
   env = env_define_prim(env, "stack", &prim_stack);
