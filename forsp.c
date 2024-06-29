@@ -38,6 +38,7 @@
 
 #define DEBUG 0
 #define USE_LOWLEVEL 1
+#define MAX_OBJECTS 16777216
 
 /*******************************************************************
  * Object
@@ -108,17 +109,40 @@ struct state
 
   obj_t * stack;                 // top-of-stack (implemented with pairs)
   obj_t * env;                   // top-level / initial environment
+  obj_t **allocated;             // buffer of allocated objects
+  int     allocated_last;        // pointer to last entry
 };
 state_t state[1];
 
+void gc();
 obj_t *alloc(void)
 {
   obj_t *obj = (obj_t*)malloc(sizeof(obj_t));
+
+  if (state->allocated) {
+    int start = state->allocated_last;
+    int has_gced = 0;
+    while (state->allocated[state->allocated_last]) {
+      state->allocated_last = (state->allocated_last + 1) % MAX_OBJECTS;
+
+      if (state->allocated_last == start) {
+        if (has_gced) {
+          FAIL("unable to allocated new object");
+        }
+
+        gc();
+        has_gced++;
+      }
+    }
+
+    state->allocated[state->allocated_last] = obj;
+  }
+
   return obj;
 }
 
-void free_obj(obj_t *obj) {
-  switch(obj->tag) {
+static void gc_free(obj_t *obj) {
+  switch(obj->tag << 1 >> 1) {
     case TAG_ATOM:
       free((void *) obj->atom);
       break;
@@ -126,9 +150,42 @@ void free_obj(obj_t *obj) {
       if (obj->string.freeable) {
         free(obj->string.data);
       }
+      break;
   }
 
   free(obj);
+}
+
+void gc_walk(obj_t *obj) {
+  switch(obj->tag << 1 >> 1) {
+    case TAG_PAIR:
+      gc_walk(obj->pair.car);
+      gc_walk(obj->pair.cdr);
+      break;
+    case TAG_CLOS:
+      gc_walk(obj->clos.body);
+      gc_walk(obj->clos.env);
+      break;
+  }
+
+  obj->tag ^= 1L << 63;
+}
+
+void gc() {
+  gc_walk(state->stack);
+  gc_walk(state->env);
+
+  for (int i = 0; i < MAX_OBJECTS; i++) {
+    if (state->allocated[i]) {
+      if (!(state->allocated[i]->tag >> 63)) {
+        gc_free(state->allocated[i]);
+        state->allocated[i] = NULL;
+      }
+    }
+  }
+
+  gc_walk(state->stack);
+  gc_walk(state->env);
 }
 
 obj_t *make_nil(void)
@@ -713,6 +770,9 @@ void setup(const char *input_path)
   #endif
 
   state->env = env;
+
+  state->allocated = malloc(sizeof(obj_t *) * MAX_OBJECTS);
+  memset(state->allocated, 0, sizeof(obj_t *) * MAX_OBJECTS);
 }
 
 int main(int argc, char *argv[])
