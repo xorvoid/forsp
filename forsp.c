@@ -38,7 +38,7 @@
 
 #define DEBUG 0
 #define USE_LOWLEVEL 1
-#define MAX_OBJECTS 16777216
+#define MAX_OBJECTS 65536
 
 /*******************************************************************
  * Object
@@ -60,11 +60,15 @@
 #define IS_PRIM(obj) ((obj)->tag == TAG_PRIM)
 #define IS_STR(obj)  ((obj)->tag == TAG_STR)
 
+#define FLAG_GC         0x01
+#define FLAG_FREEABLE   0x02
+
 // Common object structure
 typedef struct obj obj_t;
 struct obj
 {
   uint64_t tag;
+  uint8_t flags;
   union {
     const char * atom;
     int64_t      num;
@@ -73,8 +77,8 @@ struct obj
       obj_t * cdr;
     } pair;
     struct {
-      obj_t *body;
-      obj_t *env;
+      obj_t * body;
+      obj_t * env;
     } clos;
     struct {
       void (*func)(obj_t **env);
@@ -82,7 +86,6 @@ struct obj
     struct {
       char * data;
       size_t length;
-      uint8_t freeable;
     } string;
   };
 };
@@ -109,6 +112,7 @@ struct state
 
   obj_t * stack;                 // top-of-stack (implemented with pairs)
   obj_t * env;                   // top-level / initial environment
+  obj_t * expr;                  // top-level / initial expression
   obj_t **allocated;             // buffer of allocated objects
   int     allocated_last;        // pointer to last entry
 };
@@ -118,6 +122,7 @@ void gc();
 obj_t *alloc(void)
 {
   obj_t *obj = (obj_t*)malloc(sizeof(obj_t));
+  memset(obj, 0, sizeof(obj_t));
 
   if (state->allocated) {
     int start = state->allocated_last;
@@ -141,13 +146,14 @@ obj_t *alloc(void)
   return obj;
 }
 
+void print(obj_t *obj);
 static void gc_free(obj_t *obj) {
-  switch(obj->tag << 1 >> 1) {
+  switch(obj->tag) {
     case TAG_ATOM:
       free((void *) obj->atom);
       break;
     case TAG_STR:
-      if (obj->string.freeable) {
+      if (obj->flags & ~FLAG_FREEABLE) {
         free(obj->string.data);
       }
       break;
@@ -156,36 +162,56 @@ static void gc_free(obj_t *obj) {
   free(obj);
 }
 
-void gc_walk(obj_t *obj) {
-  switch(obj->tag << 1 >> 1) {
+void gc_walk(obj_t *obj, int val) {
+  if (obj == NULL) return;
+  if ((obj->flags & FLAG_GC) == val) return;
+
+  switch(obj->tag) {
     case TAG_PAIR:
-      gc_walk(obj->pair.car);
-      gc_walk(obj->pair.cdr);
+      gc_walk(obj->pair.car, val);
+      gc_walk(obj->pair.cdr, val);
       break;
     case TAG_CLOS:
-      gc_walk(obj->clos.body);
-      gc_walk(obj->clos.env);
+      gc_walk(obj->clos.body, val);
+      gc_walk(obj->clos.env, val);
       break;
   }
 
-  obj->tag ^= 1L << 63;
+  if (val) {
+    obj->flags |= FLAG_GC;
+  } else {
+    obj->flags &= ~FLAG_GC;
+  }
+}
+
+static void gc_do_walks(int val) {
+  gc_walk(state->nil, val);
+  gc_walk(state->read_stack, val);
+  gc_walk(state->interned_atoms, val);
+  gc_walk(state->atom_true, val);
+  gc_walk(state->atom_quote, val);
+  gc_walk(state->atom_push, val);
+  gc_walk(state->atom_pop, val);
+  gc_walk(state->stack, val);
+  gc_walk(state->env, val);
+  gc_walk(state->expr, val);
 }
 
 void gc() {
-  gc_walk(state->stack);
-  gc_walk(state->env);
+  if (!state->allocated) return;
+
+  gc_do_walks(1);
 
   for (int i = 0; i < MAX_OBJECTS; i++) {
     if (state->allocated[i]) {
-      if (!(state->allocated[i]->tag >> 63)) {
+      if (!(state->allocated[i]->flags & FLAG_GC)) {
         gc_free(state->allocated[i]);
         state->allocated[i] = NULL;
       }
     }
   }
 
-  gc_walk(state->stack);
-  gc_walk(state->env);
+  gc_do_walks(0);
 }
 
 obj_t *make_nil(void)
@@ -248,7 +274,7 @@ obj_t *make_str(char *data, size_t length, int freeable)
   obj->tag = TAG_STR;
   obj->string.data = data;
   obj->string.length = length;
-  obj->string.freeable = freeable;
+  obj->flags |= FLAG_FREEABLE;
   return obj;
 }
 
@@ -492,6 +518,11 @@ void print_recurse(obj_t *obj);
 
 void print_list_tail(obj_t *obj)
 {
+  if (obj == NULL) {
+    printf(" NULL");
+    return;
+  }
+
   if (obj == state->nil) {
     printf(")");
     return;
@@ -509,6 +540,11 @@ void print_list_tail(obj_t *obj)
 
 void print_recurse(obj_t *obj)
 {
+  if (obj == NULL) {
+    printf("NULL");
+    return;
+  }
+
   if (obj == state->nil) {
     printf("()");
     return;
@@ -672,6 +708,7 @@ void prim_mstr(obj_t **_)   { int64_t l = obj_i64(pop()); push(make_str(calloc(1
 void prim_speek(obj_t **_)  { int64_t o = obj_i64(pop()); obj_t *s = pop(); if (IS_STR(s)) { push(make_num(o >= s->string.length ? 0 : s->string.data[o])); } }
 void prim_spoke(obj_t **_)  { int64_t v, o; v = obj_i64(pop()); o = obj_i64(pop()); obj_t *s = pop(); if (IS_STR(s) && o < s->string.length) { s->string.data[o] = v; } }
 void prim_memview(obj_t **_){ int64_t s, a; s = obj_i64(pop()); a = obj_i64(pop()); push(make_str((char *) a, s, 0)); }
+void prim_gc(obj_t **_)     { gc(); }
 
 /* Extra primitives */
 void prim_stack(obj_t **_) { push(state->stack); }
@@ -750,6 +787,7 @@ void setup(const char *input_path)
   env = env_define_prim(env, "string-peek", &prim_speek);
   env = env_define_prim(env, "string-poke", &prim_spoke);
   env = env_define_prim(env, "string-memview", &prim_memview);
+  env = env_define_prim(env, "gc", &prim_gc);
 
   // Extra primitives
   env = env_define_prim(env, "stack", &prim_stack);
@@ -770,7 +808,10 @@ void setup(const char *input_path)
   #endif
 
   state->env = env;
+  state->allocated = NULL;
+}
 
+void setup_gc() {
   state->allocated = malloc(sizeof(obj_t *) * MAX_OBJECTS);
   memset(state->allocated, 0, sizeof(obj_t *) * MAX_OBJECTS);
 }
@@ -783,8 +824,10 @@ int main(int argc, char *argv[])
   }
   setup(argv[1]);
 
-  obj_t *obj = read();
-  compute(obj, state->env);
+  state->expr = read();
+  setup_gc();
+
+  compute(state->expr, state->env);
 
   return 0;
 }
