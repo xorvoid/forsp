@@ -1,3 +1,6 @@
 (
-  "hello" $e "hi" $e gc e print
+  "hello" $e
+  "hi" $e
+  gc
+  e print
 )

@@ -112,7 +112,8 @@ struct state
 
   obj_t * stack;                 // top-of-stack (implemented with pairs)
   obj_t * env;                   // top-level / initial environment
-  obj_t * expr;                  // top-level / initial expression
+  obj_t * comp_stack;            // comp stack
+  obj_t * env_stack;             // env stack
   obj_t **allocated;             // buffer of allocated objects
   int     allocated_last;        // pointer to last entry
 };
@@ -166,6 +167,12 @@ void gc_walk(obj_t *obj, int val) {
   if (obj == NULL) return;
   if ((obj->flags & FLAG_GC) == val) return;
 
+  if (val) {
+    obj->flags |= FLAG_GC;
+  } else {
+    obj->flags &= ~FLAG_GC;
+  }
+
   switch(obj->tag) {
     case TAG_PAIR:
       gc_walk(obj->pair.car, val);
@@ -175,12 +182,6 @@ void gc_walk(obj_t *obj, int val) {
       gc_walk(obj->clos.body, val);
       gc_walk(obj->clos.env, val);
       break;
-  }
-
-  if (val) {
-    obj->flags |= FLAG_GC;
-  } else {
-    obj->flags &= ~FLAG_GC;
   }
 }
 
@@ -193,10 +194,11 @@ static void gc_do_walks(int val) {
   gc_walk(state->atom_push, val);
   gc_walk(state->atom_pop, val);
   gc_walk(state->stack, val);
-  gc_walk(state->env, val);
-  gc_walk(state->expr, val);
+  gc_walk(state->comp_stack, val);
+  gc_walk(state->env_stack, val);
 }
 
+obj_t *cdr(obj_t *obj);
 void gc() {
   if (!state->allocated) return;
 
@@ -649,7 +651,12 @@ void compute(obj_t *comp, obj_t *env)
     print(comp);
   }
 
+  state->comp_stack = make_pair(comp, state->comp_stack);
+  state->env_stack = make_pair(env, state->env_stack);
+
   while (comp != state->nil) {
+    car(state->env_stack)->pair.car = env;
+
     // unpack
     obj_t *cmd  = car(comp);
     comp = cdr(comp);
@@ -664,6 +671,9 @@ void compute(obj_t *comp, obj_t *env)
     // atoms and (...) get ordinary eval
     eval(cmd, &env);
   }
+
+  state->comp_stack = cdr(state->comp_stack);
+  state->env_stack = cdr(state->env_stack);
 }
 
 void eval(obj_t *expr, obj_t **env)
@@ -824,10 +834,10 @@ int main(int argc, char *argv[])
   }
   setup(argv[1]);
 
-  state->expr = read();
+  obj_t *expr = read();
   setup_gc();
 
-  compute(state->expr, state->env);
+  compute(expr, state->env);
 
   return 0;
 }
