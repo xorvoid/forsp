@@ -1,0 +1,13 @@
+name: A first flow
+on:
+    push:
+        branches:
+            - main
+jobs:
+    first_job:
+        runs-on: ubuntu-latest
+        name: My 1st Job
+        steps:
+            - name: First thing
+              run: echo "This is the first thing to do"
+              shell: bash
