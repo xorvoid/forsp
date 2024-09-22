@@ -12,7 +12,6 @@ on:
 jobs:
     clinter:
         name: A Clinter
-        # runs-on: self-hosted
         runs-on: ubuntu-latest
         permissions:
             contents: read
