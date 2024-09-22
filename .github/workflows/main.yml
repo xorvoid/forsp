@@ -3,11 +3,31 @@ on:
     push:
         branches:
             - main
+    pull_request:
+        # The branches below must be a subset of the branches above
+        branches: [ "main" ]
+    schedule:
+        - cron: '39 17 * * 0'
 jobs:
-    first_job:
+    clinter:
+        name: A Clinter
         runs-on: ubuntu-latest
-        name: My 1st Job
+        permissions:
+            contents: read
+            security-events: write
+            actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
         steps:
-            - name: First thing
-              run: echo "This is the first thing to do"
-              shell: bash
+          - name: First thing
+            run: echo "This is the first thing to do"
+            shell: bash
+          - name: Checkout code
+            uses: actions/checkout@v4
+
+          - name: configure
+            run: ./configure
+          - name: make
+            run: make
+          - name: make check
+            run: make check
+          - name: make distcheck
+            run: make distcheck
