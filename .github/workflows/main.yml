@@ -1,11 +1,12 @@
 name: A first flow
 on:
     push:
-        branches:
-            - main
+        branches: [ "main" ] 
+        paths: ['**.c', '**.cpp', '**.h', '**.hpp', '**.cxx', '**.hxx', '**.cc', '**.hh', '**CMakeLists.txt', 'meson.build', '**.cmake']
     pull_request:
         # The branches below must be a subset of the branches above
         branches: [ "main" ]
+        paths: ['**.c', '**.cpp', '**.h', '**.hpp', '**.cxx', '**.hxx', '**.cc', '**.hh', '**CMakeLists.txt', 'meson.build', '**.cmake']
     schedule:
         - cron: '39 17 * * 0'
 jobs:
