@@ -23,6 +23,9 @@ jobs:
             shell: bash
           - name: Checkout code
             uses: actions/checkout@v4
+          - name: First thing
+            run: echo "Run the build" || ./build.sh
+            shell: bash
           - uses: cpp-linter/cpp-linter-action@v2
             id: linter
             env:
