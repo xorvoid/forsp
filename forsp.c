@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 #define FAIL(...) do { fprintf(stderr, "FAIL: "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); abort(); } while (0)
 
 /*******************************************************************
