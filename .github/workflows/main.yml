@@ -23,8 +23,8 @@ jobs:
             shell: bash
           - name: Checkout code
             uses: actions/checkout@v4
-          - name: First thing
-            run: (echo "Run the build" && ./build.sh) || echo "Build failure"
+          - name: Build runner
+            run: ./build.sh || echo "Build failure"
             shell: bash
           - uses: cpp-linter/cpp-linter-action@v2
             id: linter
