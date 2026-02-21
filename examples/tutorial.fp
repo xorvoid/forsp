@@ -22,8 +22,6 @@
 
   4 3
 
-  ; Now we have something! Let's put on a few more numbers
-
   stack print ; (3 4 5)
 
   ; A stack is LIFO order, or Last-In-First-Off. This means that the next value to be
