@@ -1,0 +1,40 @@
+name: A first flow
+on:
+    push:
+        branches: [ "main" ] 
+        paths: ['**.c', '**.cpp', '**.h', '**.hpp', '**.cxx', '**.hxx', '**.cc', '**.hh', '**CMakeLists.txt', 'meson.build', '**.cmake']
+    pull_request:
+        # The branches below must be a subset of the branches above
+        branches: [ "main" ]
+        paths: ['**.c', '**.cpp', '**.h', '**.hpp', '**.cxx', '**.hxx', '**.cc', '**.hh', '**CMakeLists.txt', 'meson.build', '**.cmake']
+    schedule:
+        - cron: '39 17 * * 0'
+jobs:
+    clinter:
+        name: A Clinter
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+            actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+        steps:
+          - name: First thing
+            run: echo "This is the first thing to do"
+            shell: bash
+          - name: Checkout code
+            uses: actions/checkout@v4
+          - name: Build runner
+            run: ./build.sh || echo "Build failure"
+            shell: bash
+          - uses: cpp-linter/cpp-linter-action@v2
+            id: linter
+            env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            with:
+                style: 'file'  # Use .clang-format config file
+                tidy-checks: '' # Use .clang-tidy config file
+                # only 'update' a single comment in a pull request's thread.
+                thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+          - name: Fail fast?!
+            if: steps.linter.outputs.checks-failed > 0
+            run: exit 1
