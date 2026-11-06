@@ -279,7 +279,8 @@ obj_t *read_list(void)
 static bool parse_i64(const char *str, size_t len, int64_t *_out)
 {
   // Copy to ensure null-termination
-  static char buf[20];
+  static char buf[21];
+  if (len > 20) len = 20;
   memcpy(buf, str, len);
   buf[len] = '\0';
 
